@@ -14,7 +14,18 @@
 	<name>authentication-internal-service</name>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<aspectj.version>1.9.20</aspectj.version>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<!-- Override AspectJ version for Java 17 compatibility -->
+			<dependency>
+				<groupId>org.aspectj</groupId>
+				<artifactId>aspectjweaver</artifactId>
+				<version>${aspectj.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>io.mosip.authentication</groupId>
@@ -254,6 +265,14 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<!-- H2 Database for Audit Logging -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.197</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- Spring Data JPA (already included via kernel-dataaccess-hibernate) -->
 	</dependencies>
 	
 	<build>
@@ -282,6 +301,13 @@
 				<configuration>
 					<source>${maven.compiler.source}</source>
 					<target>${maven.compiler.target}</target>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 		</plugins>

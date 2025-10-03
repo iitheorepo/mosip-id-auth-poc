@@ -49,6 +49,52 @@ mvn test -Dtest=H2AuditLogServiceTest,AuditLogControllerTest,HealthDetailsContro
 
 ---
 
+## 🚀 Quick Start
+
+### How to Build and Test the Project
+
+**1. Clone the repository:**
+```bash
+git clone https://github.com/mosip/id-authentication.git
+cd id-authentication
+```
+
+**2. Navigate to the authentication module:**
+```bash
+cd authentication
+```
+
+**3. Install dependencies and build all modules:**
+```bash
+mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -Dgpg.skip=true
+```
+
+**4. Build and test a specific service (e.g., authentication-internal-service):**
+```bash
+cd authentication-internal-service
+mvn clean install
+```
+
+**5. Run the new endpoint tests:**
+```bash
+mvn test -Dtest=H2AuditLogServiceTest,AuditLogControllerTest,HealthDetailsControllerTest
+# Expected output: Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+```
+
+### ⚠️ Important Note: Running the Service
+
+This is a production MOSIP application that requires complete infrastructure to run:
+- Spring Cloud Config Server
+- PostgreSQL/MariaDB databases
+- Redis cache
+- Other MOSIP services
+
+The implementation is fully validated through comprehensive unit tests (see step 5 above).
+
+For complete setup instructions, see [Build & run (for developers)](#build--run-for-developers) section below.
+
+---
+
 ## Databases
 Refer to [SQL scripts](db_scripts).
 

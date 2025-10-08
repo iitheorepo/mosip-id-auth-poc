@@ -7,6 +7,7 @@ import io.mosip.authentication.internal.service.entity.AuditLogEntity;
 import io.mosip.authentication.internal.service.repository.AuditLogRepository;
 import io.mosip.authentication.internal.service.service.AuditLogService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -49,5 +50,32 @@ public class H2AuditLogService implements AuditLogService {
     @Override
     public List<AuditLogEntity> getAllEvents() {
         return auditLogRepository.findAll();
+    }
+
+    /**
+     * Get audit events with optional filtering by userId and/or eventType, with sorting
+     *
+     * @param userId filter by user ID (optional)
+     * @param eventType filter by event type (optional)
+     * @param sortBy field to sort by (default: timestamp)
+     * @param sortOrder sort order (asc/desc, default: desc)
+     * @return List of AuditLogEntity matching the criteria
+     */
+    @Override
+    public List<AuditLogEntity> getEvents(String userId, EventType eventType, String sortBy, String sortOrder) {
+        Sort sort = Sort.by(
+            "asc".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC,
+            sortBy != null ? sortBy : "timestamp"
+        );
+
+        if (userId != null && eventType != null) {
+            return auditLogRepository.findByUserIdAndEventType(userId, eventType, sort);
+        } else if (userId != null) {
+            return auditLogRepository.findByUserId(userId, sort);
+        } else if (eventType != null) {
+            return auditLogRepository.findByEventType(eventType, sort);
+        } else {
+            return auditLogRepository.findAll(sort);
+        }
     }
 }

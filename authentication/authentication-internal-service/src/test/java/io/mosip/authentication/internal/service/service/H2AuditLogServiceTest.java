@@ -12,13 +12,16 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 
@@ -119,5 +122,107 @@ public class H2AuditLogServiceTest {
         service.logEvent(request);
 
         verify(repository, times(1)).save(any(AuditLogEntity.class));
+    }
+
+    @Test
+    public void testGetEvents_NoFilters_ReturnsAllEventsSorted() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user1", LocalDateTime.now());
+        AuditLogEntity entity2 = new AuditLogEntity("id2", EventType.LOGOUT, "desc2", "user2", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.DESC, "timestamp");
+        when(repository.findAll(any(Sort.class))).thenReturn(Arrays.asList(entity1, entity2));
+
+        List<AuditLogEntity> events = service.getEvents(null, null, "timestamp", "desc");
+
+        assertEquals(2, events.size());
+        verify(repository).findAll(sort);
+    }
+
+    @Test
+    public void testGetEvents_FilterByUserId_ReturnsFilteredEvents() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user123", LocalDateTime.now());
+        AuditLogEntity entity2 = new AuditLogEntity("id2", EventType.ACCESS, "desc2", "user123", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.DESC, "timestamp");
+        when(repository.findByUserId(eq("user123"), any(Sort.class))).thenReturn(Arrays.asList(entity1, entity2));
+
+        List<AuditLogEntity> events = service.getEvents("user123", null, "timestamp", "desc");
+
+        assertEquals(2, events.size());
+        assertEquals("user123", events.get(0).getUserId());
+        verify(repository).findByUserId(eq("user123"), eq(sort));
+    }
+
+    @Test
+    public void testGetEvents_FilterByEventType_ReturnsFilteredEvents() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user1", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.DESC, "timestamp");
+        when(repository.findByEventType(eq(EventType.LOGIN), any(Sort.class))).thenReturn(Collections.singletonList(entity1));
+
+        List<AuditLogEntity> events = service.getEvents(null, EventType.LOGIN, "timestamp", "desc");
+
+        assertEquals(1, events.size());
+        assertEquals(EventType.LOGIN, events.get(0).getEventType());
+        verify(repository).findByEventType(eq(EventType.LOGIN), eq(sort));
+    }
+
+    @Test
+    public void testGetEvents_FilterByUserIdAndEventType_ReturnsFilteredEvents() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user123", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.DESC, "timestamp");
+        when(repository.findByUserIdAndEventType(eq("user123"), eq(EventType.LOGIN), any(Sort.class)))
+            .thenReturn(Collections.singletonList(entity1));
+
+        List<AuditLogEntity> events = service.getEvents("user123", EventType.LOGIN, "timestamp", "desc");
+
+        assertEquals(1, events.size());
+        assertEquals("user123", events.get(0).getUserId());
+        assertEquals(EventType.LOGIN, events.get(0).getEventType());
+        verify(repository).findByUserIdAndEventType(eq("user123"), eq(EventType.LOGIN), eq(sort));
+    }
+
+    @Test
+    public void testGetEvents_SortAscending_AppliesCorrectSort() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user1", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.ASC, "timestamp");
+        when(repository.findAll(any(Sort.class))).thenReturn(Collections.singletonList(entity1));
+
+        List<AuditLogEntity> events = service.getEvents(null, null, "timestamp", "asc");
+
+        assertEquals(1, events.size());
+        verify(repository).findAll(eq(sort));
+    }
+
+    @Test
+    public void testGetEvents_CustomSortField_AppliesCorrectSort() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user1", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.ASC, "userId");
+        when(repository.findAll(any(Sort.class))).thenReturn(Collections.singletonList(entity1));
+
+        List<AuditLogEntity> events = service.getEvents(null, null, "userId", "asc");
+
+        assertEquals(1, events.size());
+        verify(repository).findAll(eq(sort));
+    }
+
+    @Test
+    public void testGetEvents_DefaultSortField_UsesTimestamp() {
+        AuditLogEntity entity1 = new AuditLogEntity("id1", EventType.LOGIN, "desc1", "user1", LocalDateTime.now());
+        Sort sort = Sort.by(Sort.Direction.DESC, "timestamp");
+        when(repository.findAll(any(Sort.class))).thenReturn(Collections.singletonList(entity1));
+
+        List<AuditLogEntity> events = service.getEvents(null, null, null, "desc");
+
+        assertEquals(1, events.size());
+        verify(repository).findAll(eq(sort));
+    }
+
+    @Test
+    public void testGetEvents_EmptyResult_ReturnsEmptyList() {
+        Sort sort = Sort.by(Sort.Direction.DESC, "timestamp");
+        when(repository.findByUserId(eq("nonexistent"), any(Sort.class))).thenReturn(Collections.emptyList());
+
+        List<AuditLogEntity> events = service.getEvents("nonexistent", null, "timestamp", "desc");
+
+        assertTrue(events.isEmpty());
+        verify(repository).findByUserId(eq("nonexistent"), eq(sort));
     }
 }

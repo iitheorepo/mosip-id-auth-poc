@@ -16,17 +16,19 @@ The `authentication-internal-service` module has been enhanced with two new REST
 
 ### What's New
 
-**Two New REST Endpoints:**
+**Three New REST Endpoints:**
 1. **Health Details API** - `GET /api/v1/health/details`
 2. **Audit Log API** - `POST /api/v1/audit/log`
+3. **Get Audit Events API** - `GET /api/v1/audit/events` *(New)*
 
 **Implementation Highlights:**
 - ✅ **10 new production files** (377 lines): Controllers, Services, DTOs, Entities, Repositories
-- ✅ **3 test files** (231 lines): 13 comprehensive unit tests (100% pass rate)
+- ✅ **3 test files** (231 lines): 21 comprehensive unit tests (100% pass rate)
 - ✅ **H2 Database Integration**: JPA/Hibernate with Spring Data repositories
 - ✅ **Service Interface Pattern**: Dependency inversion for easy testing and maintainability
 - ✅ **Type-Safe Enums**: EventType enum instead of string literals
 - ✅ **Full Swagger Documentation**: OpenAPI v3 annotations on all endpoints
+- ✅ **Advanced Filtering & Sorting**: Query audit events by userId, eventType with customizable sorting
 - ✅ **Reuses MOSIP Infrastructure**: EnvUtil, IdAuthExceptionHandler, existing package structure
 - ✅ **Production Ready**: Easy database swap (H2 → PostgreSQL/MySQL via configuration)
 
@@ -42,7 +44,7 @@ The `authentication-internal-service` module has been enhanced with two new REST
 ```bash
 cd authentication/authentication-internal-service
 mvn test -Dtest=H2AuditLogServiceTest,AuditLogControllerTest,HealthDetailsControllerTest
-# Expected: Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+# Expected: Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 [Jump to detailed endpoint documentation ↓](#new-endpoints-overview)
@@ -78,7 +80,7 @@ mvn clean install
 **5. Run the new endpoint tests:**
 ```bash
 mvn test -Dtest=H2AuditLogServiceTest,AuditLogControllerTest,HealthDetailsControllerTest
-# Expected output: Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+# Expected output: Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ### ⚠️ Important Note: Running the Service
@@ -109,7 +111,7 @@ Refer to [SQL scripts](db_scripts).
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/mosip/id-authentication.git
+   git clone https://github.com/iitheorepo/id-auth-poc.git
    cd id-authentication
    ```
 
@@ -172,7 +174,7 @@ The authentication-internal-service includes two new REST endpoints for health m
 - **Metadata:** Retrieved from existing MOSIP infrastructure (EnvUtil)
 - **Test Coverage:** 4 unit tests in `HealthDetailsControllerTest.java`
 
-#### 2. Audit Log API
+#### 2. Audit Log API (Create)
 
 - **Endpoint:** `POST /api/v1/audit/log`
 - **Purpose:** Logs audit events to H2 database
@@ -187,6 +189,21 @@ The authentication-internal-service includes two new REST endpoints for health m
   - EventType enum for type safety (LOGIN, LOGOUT, ACCESS, CREATE, UPDATE, DELETE, etc.)
   - Returns eventId (UUID) and timestamp
   - Service interface pattern for easy testing and maintainability
+
+#### 3. Get Audit Events API (Read)
+
+- **Endpoint:** `GET /api/v1/audit/events`
+- **Purpose:** Retrieves audit events with filtering and sorting
+- **Response Codes:**
+  - `200 OK` - Events retrieved successfully
+  - `400 Bad Request` - Invalid request parameters
+- **Features:**
+  - **Filter by userId:** `?userId=user123`
+  - **Filter by eventType:** `?eventType=LOGIN`
+  - **Combine filters:** `?userId=user123&eventType=LOGIN`
+  - **Custom sorting:** `?sortBy=timestamp` (default), `sortBy=userId`, `sortBy=eventType`
+  - **Sort order:** `?sortOrder=desc` (default) or `sortOrder=asc`
+  - Returns list of audit events matching criteria
 
 **Example Request:**
 ```json
@@ -205,15 +222,40 @@ The authentication-internal-service includes two new REST endpoints for health m
 }
 ```
 
+**Example Request (GET):**
+```bash
+# Get all events for a user
+GET /api/v1/audit/events?userId=user123
+
+# Get LOGIN events sorted by timestamp ascending
+GET /api/v1/audit/events?eventType=LOGIN&sortOrder=asc
+
+# Get user's LOGIN events
+GET /api/v1/audit/events?userId=user123&eventType=LOGIN
+```
+
+**Example Response:**
+```json
+[
+  {
+    "eventId": "550e8400-e29b-41d4-a716-446655440000",
+    "eventType": "LOGIN",
+    "description": "User attempted login",
+    "userId": "user123",
+    "timestamp": "2025-10-01T10:30:45.123"
+  }
+]
+```
+
 **Implementation Details:**
 - **Controller:** `AuditLogController.java`
 - **Service Interface:** `AuditLogService.java`
 - **Service Implementation:** `H2AuditLogService.java`
 - **Entity:** `AuditLogEntity.java` (JPA entity)
-- **Repository:** `AuditLogRepository.java` (Spring Data JPA)
+- **Repository:** `AuditLogRepository.java` (Spring Data JPA with custom query methods)
 - **Package:** `io.mosip.authentication.internal.service`
 - **Architecture:** Follows dependency inversion principle with interface-based design
-- **Test Coverage:** 9 unit tests across `AuditLogControllerTest.java` and `H2AuditLogServiceTest.java`
+- **Test Coverage:** 17 unit tests across `AuditLogControllerTest.java` and `H2AuditLogServiceTest.java`
 
 
 ### Running Unit Tests
@@ -233,8 +275,8 @@ mvn test -Dtest=H2AuditLogServiceTest,AuditLogControllerTest,HealthDetailsContro
 
 # Or run individually:
 mvn test -Dtest=HealthDetailsControllerTest      # 4 tests - Health API
-mvn test -Dtest=AuditLogControllerTest           # 3 tests - Audit API Controller
-mvn test -Dtest=H2AuditLogServiceTest            # 6 tests - Audit API Service Layer
+mvn test -Dtest=AuditLogControllerTest           # 11 tests - Audit API Controller
+mvn test -Dtest=H2AuditLogServiceTest            # 14 tests - Audit API Service Layer
 ```
 
 #### Expected output:
@@ -245,9 +287,9 @@ mvn test -Dtest=H2AuditLogServiceTest            # 6 tests - Audit API Service L
 [INFO] Running io.mosip.authentication.internal.service.controller.HealthDetailsControllerTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 [INFO] Running io.mosip.authentication.internal.service.controller.AuditLogControllerTest
-[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
 [INFO] Running io.mosip.authentication.internal.service.service.H2AuditLogServiceTest
-[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -255,8 +297,8 @@ mvn test -Dtest=H2AuditLogServiceTest            # 6 tests - Audit API Service L
 
 **Test Coverage Summary:**
 - ✅ Health Details API: 4 tests covering service UP/DOWN scenarios, metadata, timestamps
-- ✅ Audit Log Controller: 3 tests covering request validation, service integration, response structure
-- ✅ Audit Log Service: 6 tests covering H2 persistence, UUID generation, field validation
+- ✅ Audit Log Controller: 11 tests covering POST/GET endpoints, filtering, sorting, validation
+- ✅ Audit Log Service: 14 tests covering H2 persistence, UUID generation, field validation, query methods
 
 ### Configuration
 
@@ -334,12 +376,14 @@ Automated functional tests available in [Functional Tests repo](https://github.c
   - DTO: `HealthDetailsResponseDto.java`
   - Tests: `HealthDetailsControllerTest.java` (4 tests)
 
-#### Audit Log API
-- **Endpoint:** `POST /api/v1/audit/log`
-- **Description:** Logs custom audit events to H2 database with JPA persistence
+#### Audit Log APIs
+- **Endpoints:**
+  - `POST /api/v1/audit/log` - Create audit event
+  - `GET /api/v1/audit/events` - Retrieve audit events with filtering and sorting
+- **Description:** Complete audit logging system with create and retrieve operations
 - **Storage:** H2 in-memory database (production-ready - swap to PostgreSQL/MySQL via config)
 - **Architecture:** Interface-based service design (`AuditLogService` interface with `H2AuditLogService` implementation)
-- **Request Body:**
+- **POST Request Body:**
   ```json
   {
     "eventType": "string (required) - enum: LOGIN, LOGOUT, ACCESS, CREATE, UPDATE, DELETE, AUTHENTICATION, AUTHORIZATION, OTHER",
@@ -347,17 +391,23 @@ Automated functional tests available in [Functional Tests repo](https://github.c
     "userId": "string (required)"
   }
   ```
+- **GET Query Parameters:**
+  - `userId` (optional) - Filter by user ID
+  - `eventType` (optional) - Filter by event type
+  - `sortBy` (optional, default: timestamp) - Field to sort by
+  - `sortOrder` (optional, default: desc) - Sort order (asc/desc)
 - **Response Codes:**
-  - `201 Created` - Event logged successfully
-  - `400 Bad Request` - Validation error (missing required fields)
+  - `200 OK` - Events retrieved successfully (GET)
+  - `201 Created` - Event logged successfully (POST)
+  - `400 Bad Request` - Validation error (missing required fields or invalid parameters)
 - **Implementation Files:**
   - Controller: `AuditLogController.java`
   - Service Interface: `AuditLogService.java`
   - Service Implementation: `H2AuditLogService.java`
   - Entity: `AuditLogEntity.java`
-  - Repository: `AuditLogRepository.java` (Spring Data JPA)
+  - Repository: `AuditLogRepository.java` (Spring Data JPA with custom query methods)
   - DTOs: `AuditLogRequestDto.java`, `AuditLogResponseDto.java`, `EventType.java` (enum)
-  - Tests: `AuditLogControllerTest.java` (3 tests), `H2AuditLogServiceTest.java` (6 tests)
+  - Tests: `AuditLogControllerTest.java` (11 tests), `H2AuditLogServiceTest.java` (14 tests)
 
 
 ### Implementation Summary
@@ -375,13 +425,13 @@ Automated functional tests available in [Functional Tests repo](https://github.c
 - **Production Code:** 377 lines across 10 files
   - DTOs: 4 files (90 lines) - Request/Response objects with validation
   - Entities: 1 file (39 lines) - JPA entity for H2/production database
-  - Repositories: 1 file (14 lines) - Spring Data JPA repository interface
-  - Services: 2 files (91 lines) - Service interface and H2 implementation
-  - Controllers: 2 files (154 lines) - REST endpoints with Swagger/OpenAPI v3 documentation
-- **Test Code:** 231 lines across 3 test files
-  - Controller Tests: 2 files (160 lines) - 7 unit tests with Mockito
-  - Service Tests: 1 file (129 lines) - 6 unit tests for JPA persistence
-- **Total Tests:** 13 unit tests (100% pass rate)
+  - Repositories: 1 file (20 lines) - Spring Data JPA repository with custom query methods
+  - Services: 2 files (115 lines) - Service interface and H2 implementation with filtering/sorting
+  - Controllers: 2 files (185 lines) - REST endpoints with Swagger/OpenAPI v3 documentation
+- **Test Code:** 355 lines across 3 test files
+  - Controller Tests: 2 files (230 lines) - 15 unit tests with Mockito
+  - Service Tests: 1 file (229 lines) - 14 unit tests for JPA persistence and querying
+- **Total Tests:** 29 unit tests (100% pass rate)
 - **Database:** H2 in-memory with automatic schema generation (production-ready for PostgreSQL/MySQL)
 
 #### Key Features
